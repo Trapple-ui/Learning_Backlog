@@ -6,6 +6,12 @@ engine = db.create_engine('postgresql+psycopg2:///learning_tracker.db')
 
 class Model(DeclarativeBase): pass
 
+class Tags(Model):
+    __tablename__ = 'Tags'
+
+    tag_id: Mapped[int] = mapped_column(primary_key=True)
+    tag_name: Mapped[str] = mapped_column(db.String(255), nullable=False, unique=True)
+
 class Resources(Model):
     __tablename__ = 'resources'
 
@@ -22,4 +28,3 @@ class Resources(Model):
         CheckConstraint(type.in_(('видео', 'статья', 'курс', 'книга', 'сайт', 'подкаст')), name='check_in_type'),
         CheckConstraint(priority.in_((1, 2, 3, 4, 5)), name='check_in_priority')
     )
-
