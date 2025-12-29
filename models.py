@@ -9,6 +9,14 @@ SessionFactory = sessionmaker(bind=engine, autoflush=False) # фабрика с�
 
 class Model(DeclarativeBase): pass
 
+# связывающая таблица ресурсов и тегов для М:М
+resource_tags = db.Table(
+    'resource_tags',
+    Model.metadata,
+    db.Column('res_id', db.ForeignKey('resources.res_id'), primary_key=True),
+    db.Column('tag_id', db.ForeignKey('tags.tag_id'), primary_key=True)
+)
+
 # таблица тегов
 class Tags(Model):
     __tablename__ = 'tags'
@@ -16,7 +24,13 @@ class Tags(Model):
     tag_id: Mapped[int] = mapped_column(primary_key=True)
     tag_name: Mapped[str] = mapped_column(db.String(255), nullable=False, unique=True)
 
-    resources = relationship('Resources', secondary='resource_tags', back_populates='tags')
+    resources = relationship(
+        'Resources',
+        secondary=resource_tags,
+        back_populates='tags',
+        cascade="all, delete",
+        passive_deletes=True
+    )
 
 # таблица ресурсов
 class Resources(Model):
@@ -36,20 +50,16 @@ class Resources(Model):
         CheckConstraint(priority.in_((1, 2, 3, 4, 5)), name='check_in_priority')
     )
 
-    tags = relationship('Tags', secondary='resource_tags', back_populates='resources')
-
-# связывающая таблица для отношения "многие ко многим"
-class ResourceTags(Model):
-    __tablename__ = 'resource_tags'
-
-    # первичный ключ - это составной ключ из таблицы ресурсов и тегов
-    tag: Mapped[int] = mapped_column(db.Integer, ForeignKey('tags.tag_id'), primary_key=True)
-    res_id: Mapped[int] = mapped_column(db.Integer, ForeignKey('resources.res_id'), primary_key=True)
+    tags = relationship(
+        'Tags',
+        secondary=resource_tags,
+        back_populates='resources',
+        cascade="all, delete",
+        passive_deletes=True
+    )
 
 def create_tables():
-    with SessionFactory() as session:
-        Model.metadata.create_all(engine)
+    Model.metadata.create_all(engine)
 
 def delete_tables():
-    with SessionFactory() as session:
-        Model.metadata.drop_all(engine)
+    Model.metadata.drop_all(engine)
