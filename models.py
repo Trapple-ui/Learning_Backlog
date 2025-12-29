@@ -1,10 +1,10 @@
 import sqlalchemy as db
-from sqlalchemy import CheckConstraint, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy import CheckConstraint, ForeignKey, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, relationship
 
-engine = db.create_engine('postgresql+psycopg2:///learning_tracker.db')
+engine = db.create_engine('postgresql+psycopg2://me:secret@localhost:5432/learning_tracker')
 
-session = sessionmaker(bind=engine) # фабрика сессий - создает сессии. Один раз настроил и все
+SessionFactory = sessionmaker(bind=engine, autoflush=False) # фабрика сессий - создает сессии. Один раз настроил и все
 # session = Session(engine) # одна сессия
 
 class Model(DeclarativeBase): pass
@@ -15,6 +15,8 @@ class Tags(Model):
 
     tag_id: Mapped[int] = mapped_column(primary_key=True)
     tag_name: Mapped[str] = mapped_column(db.String(255), nullable=False, unique=True)
+
+    resources = relationship('Resources', secondary='resource_tags', back_populates='tags')
 
 # таблица ресурсов
 class Resources(Model):
@@ -34,6 +36,8 @@ class Resources(Model):
         CheckConstraint(priority.in_((1, 2, 3, 4, 5)), name='check_in_priority')
     )
 
+    tags = relationship('Tags', secondary='resource_tags', back_populates='resources')
+
 # связывающая таблица для отношения "многие ко многим"
 class ResourceTags(Model):
     __tablename__ = 'resource_tags'
@@ -41,3 +45,11 @@ class ResourceTags(Model):
     # первичный ключ - это составной ключ из таблицы ресурсов и тегов
     tag: Mapped[int] = mapped_column(db.Integer, ForeignKey('tags.tag_id'), primary_key=True)
     res_id: Mapped[int] = mapped_column(db.Integer, ForeignKey('resources.res_id'), primary_key=True)
+
+def create_tables():
+    with SessionFactory() as session:
+        Model.metadata.create_all(engine)
+
+def delete_tables():
+    with SessionFactory() as session:
+        Model.metadata.drop_all(engine)
